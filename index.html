@@ -472,7 +472,7 @@
         </div>
 
         <footer>
-            <p>© 2023 Direct Download Search. All rights reserved. | Protected by Copyright Law</p>
+            <p>© 2025 Direct Download Search By Kuldeep Rai. All rights reserved. | Protected by Copyright Law</p>
         </footer>
     </div>
 
@@ -480,11 +480,17 @@
         // Domain protection system
         const authorizedDomain = 'https://streamflixpro0.github.io/find-everything/'; // Replace with your actual domain
         const currentDomain = window.location.hostname;
+        let protectionShown = false;
+        let unauthorizedDomain = false;
         
         // Check if running on authorized domain
         function checkDomainAuthorization() {
             if (!currentDomain.includes(authorizedDomain) && currentDomain !== 'localhost' && currentDomain !== '127.0.0.1') {
-                showProtectionMessage();
+                unauthorizedDomain = true;
+                if (!protectionShown) {
+                    showProtectionMessage();
+                    protectionShown = true;
+                }
                 return false;
             }
             return true;
@@ -501,37 +507,17 @@
             document.body.style.overflow = 'auto';
         }
         
-        // Anti-copy protection
-        document.addEventListener('contextmenu', function(e) {
-            e.preventDefault();
-            showLegalNotice('Right-click disabled - Content protected by copyright');
-        });
-        
-        document.addEventListener('keydown', function(e) {
-            // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
-            if (e.key === 'F12' || 
-                (e.ctrlKey && e.shiftKey && e.key === 'I') ||
-                (e.ctrlKey && e.shiftKey && e.key === 'J') ||
-                (e.ctrlKey && e.key === 'u')) {
-                e.preventDefault();
-                showLegalNotice('Developer tools disabled - Content protected by copyright');
-            }
-            
-            // Disable Ctrl+C, Ctrl+A, Ctrl+X
-            if ((e.ctrlKey && e.key === 'c') || 
-                (e.ctrlKey && e.key === 'a') ||
-                (e.ctrlKey && e.key === 'x')) {
-                showLegalNotice('Copying content is prohibited');
-            }
-        });
-        
-        // Prevent text selection
-        document.addEventListener('selectstart', function(e) {
-            e.preventDefault();
-            showLegalNotice('Text selection disabled - Content protected by copyright');
-        });
+        // Anti-copy protection - Only show once per action
+        let lastNoticeTime = 0;
+        const NOTICE_COOLDOWN = 5000; // 5 seconds cooldown
         
         function showLegalNotice(message) {
+            const now = Date.now();
+            if (now - lastNoticeTime < NOTICE_COOLDOWN) {
+                return; // Skip if notice was shown recently
+            }
+            
+            lastNoticeTime = now;
             const notice = document.getElementById('legalNotice');
             notice.textContent = message;
             notice.style.display = 'block';
@@ -541,33 +527,71 @@
             }, 3000);
         }
         
+        // Only apply protection on unauthorized domains
+        if (!checkDomainAuthorization()) {
+            document.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                showLegalNotice('Right-click disabled - Content protected by copyright');
+            });
+            
+            document.addEventListener('keydown', function(e) {
+                // Disable F12, Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+U
+                if (e.key === 'F12' || 
+                    (e.ctrlKey && e.shiftKey && e.key === 'I') ||
+                    (e.ctrlKey && e.shiftKey && e.key === 'J') ||
+                    (e.ctrlKey && e.key === 'u')) {
+                    e.preventDefault();
+                    showLegalNotice('Developer tools disabled - Content protected by copyright');
+                }
+                
+                // Disable Ctrl+C, Ctrl+A, Ctrl+X
+                if ((e.ctrlKey && e.key === 'c') || 
+                    (e.ctrlKey && e.key === 'a') ||
+                    (e.ctrlKey && e.key === 'x')) {
+                    showLegalNotice('Copying content is prohibited');
+                }
+            });
+            
+            // Prevent text selection
+            document.addEventListener('selectstart', function(e) {
+                e.preventDefault();
+                showLegalNotice('Text selection disabled - Content protected by copyright');
+            });
+        }
+        
         // Domain check on load
         window.addEventListener('load', function() {
             if (!checkDomainAuthorization()) {
                 // Disable all functionality if unauthorized domain
                 document.getElementById('searchForm').addEventListener('submit', function(e) {
                     e.preventDefault();
-                    showProtectionMessage();
-                });
-                
-                document.querySelectorAll('.dropdown-btn').forEach(btn => {
-                    btn.addEventListener('click', function(e) {
-                        e.preventDefault();
+                    if (!protectionShown) {
                         showProtectionMessage();
-                    });
+                    }
                 });
             }
         });
 
-        // Dropdown functionality (only if authorized)
+        // Dropdown functionality (works normally on authorized domains)
         document.querySelectorAll('.dropdown-btn').forEach(button => {
             button.addEventListener('click', function(e) {
-                if (!checkDomainAuthorization()) {
-                    e.preventDefault();
-                    showProtectionMessage();
+                if (unauthorizedDomain) {
+                    // On unauthorized domains, allow dropdowns to work but show protection on form submission
+                    e.stopPropagation();
+                    const dropdown = this.parentElement;
+                    
+                    // Close all other dropdowns
+                    document.querySelectorAll('.dropdown').forEach(d => {
+                        if (d !== dropdown) {
+                            d.classList.remove('active');
+                        }
+                    });
+                    
+                    dropdown.classList.toggle('active');
                     return;
                 }
                 
+                // Normal behavior on authorized domains
                 e.stopPropagation();
                 const dropdown = this.parentElement;
                 
@@ -594,9 +618,9 @@
         // File type selection
         document.querySelectorAll('#fileTypeDropdown .dropdown-content a').forEach(link => {
             link.addEventListener('click', function(e) {
-                if (!checkDomainAuthorization()) {
-                    e.preventDefault();
+                if (unauthorizedDomain && !protectionShown) {
                     showProtectionMessage();
+                    e.preventDefault();
                     return;
                 }
                 
@@ -630,9 +654,9 @@
         // Engine selection
         document.querySelectorAll('#engineDropdown .dropdown-content a').forEach(link => {
             link.addEventListener('click', function(e) {
-                if (!checkDomainAuthorization()) {
-                    e.preventDefault();
+                if (unauthorizedDomain && !protectionShown) {
                     showProtectionMessage();
+                    e.preventDefault();
                     return;
                 }
                 
@@ -646,9 +670,11 @@
 
         // Form submission
         document.getElementById('searchForm').addEventListener('submit', function(e) {
-            if (!checkDomainAuthorization()) {
+            if (unauthorizedDomain) {
                 e.preventDefault();
-                showProtectionMessage();
+                if (!protectionShown) {
+                    showProtectionMessage();
+                }
                 return;
             }
             
@@ -659,7 +685,7 @@
             const engine = document.getElementById('engine').value;
             
             if (!query) {
-                showLegalNotice('Please enter a search query');
+                alert('Please enter a search query');
                 return;
             }
             
